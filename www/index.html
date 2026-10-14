@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0f1226"><title>Fouille</title>
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0f1226"><title>TIA QUICK FIND</title>
 <script src="lib/xlsx.full.min.js"></script>
 <script src="lib/jszip.min.js"></script>
 <style>
@@ -14,11 +14,12 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:
 .scr{position:absolute;inset:0;display:flex;flex-direction:column;z-index:1;transition:transform .5s cubic-bezier(.2,.85,.2,1),opacity .4s,visibility .5s}
 .scr.off{transform:translateX(10%);opacity:0;visibility:hidden;pointer-events:none}.scr.left{transform:translateX(-10%);opacity:0;visibility:hidden;pointer-events:none}
 header{display:flex;align-items:center;gap:10px;padding:16px 18px 10px}
-header h1{font-size:26px;font-weight:800;margin:0;letter-spacing:-.02em;flex:1;background:linear-gradient(90deg,var(--fg),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
+header h1{font-size:23px;font-weight:800;margin:0;letter-spacing:-.02em;flex:1;background:linear-gradient(90deg,var(--fg),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent}
 header h2{font-size:16px;font-weight:600;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ib{width:44px;height:44px;border-radius:14px;border:1px solid var(--bd);background:var(--card);color:var(--fg);display:grid;place-items:center;cursor:pointer;transition:transform .2s,background .2s}
 .ib:active{transform:scale(.88)}.ib:hover{background:var(--inp)}.ib svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ib.q{color:#ff7a8a}
+.chips{display:none;gap:8px;overflow-x:auto;padding:4px 16px 8px;flex:none}.chip{flex:none;padding:8px 14px;border-radius:99px;border:1px solid var(--bd);background:var(--card);color:var(--fg);font:600 12px Sora,system-ui,sans-serif;cursor:pointer;transition:background .2s,transform .2s}.chip:active{transform:scale(.94)}.chip.on{background:var(--a);border-color:var(--a);color:#fff}
 .sub{padding:0 20px 8px;color:var(--mut);font-size:13px}
 .list{flex:1;overflow-y:auto;padding:8px 16px 110px}
 .card{display:flex;align-items:center;gap:14px;padding:14px;margin-bottom:12px;border-radius:20px;background:var(--card);border:1px solid var(--bd);cursor:pointer;transition:transform .25s,border-color .25s;animation:up .5s both}
@@ -58,7 +59,7 @@ mark{background:var(--hl);color:var(--hlt);border-radius:4px;padding:0 2px}
 <div class="orb o1"></div><div class="orb o2"></div>
 <div id="app">
  <section class="scr" id="home">
-  <header><h1>Fouille</h1><button class="ib q" id="quit" aria-label="Quitter"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></header>
+  <header><h1>TIA QUICK FIND</h1><button class="ib q" id="quit" aria-label="Quitter"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></header>
   <div class="sub">Vos fichiers restent ici jusqu'à leur suppression.</div>
   <div class="list" id="files"></div>
   <button class="fab" id="add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Ajouter un fichier</button>
@@ -67,7 +68,7 @@ mark{background:var(--hl);color:var(--hlt);border-radius:4px;padding:0 2px}
  <section class="scr off" id="file">
   <header><button class="ib" id="b1" aria-label="Accueil"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="ft"></h2></header>
   <div class="sb"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Nom, mot, numéro…" autocomplete="off"><button id="cl" hidden>✕</button></div>
-  <div id="cnt"></div><div class="list" id="res"></div>
+  <div class="chips" id="chips"></div><div id="cnt"></div><div class="list" id="res"></div>
  </section>
  <section class="scr off" id="view">
   <header><button class="ib" id="b2" aria-label="Retour aux résultats"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="vt"></h2><button class="ib" id="hm" aria-label="Accueil"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></svg></button></header>
@@ -81,36 +82,56 @@ mark{background:var(--hl);color:var(--hlt);border-radius:4px;padding:0 2px}
 const $=s=>document.querySelector(s),esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const ext=n=>n.split('.').pop().toLowerCase(),unit=e=>e=='docx'?'paragraphe':e=='pptx'?'texte':'ligne';
-let db=null,files=[],cur=null,terms=[],scr='home',tt;
+let db=null,files=[],cur=null,terms=[],scr='home',sf=null,tt;
 const ORDER=['home','file','view'];
 const st=(m,s='f')=>db.transaction(s,m).objectStore(s),done=t=>new Promise((ok,ko)=>{t.oncomplete=ok;t.onerror=t.onabort=()=>ko(t.error)}),rq=r=>new Promise((ok,ko)=>{r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)});
 function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2800)}
 function ask(t,p,fn){$('#mt').textContent=t;$('#mp').textContent=p;$('#md').classList.add('on');$('#my').onclick=()=>{$('#md').classList.remove('on');fn()};$('#mn').onclick=()=>$('#md').classList.remove('on')}
 function go(n,push=true){scr=n;const i=ORDER.indexOf(n);ORDER.forEach((s,j)=>$('#'+s).className='scr'+(j<i?' left':j>i?' off':''));if(push)try{history.pushState({n},'')}catch(e){}}
 window.onpopstate=()=>{if(scr=='view')go('file',false);else if(scr=='file')go('home',false);else try{history.pushState({n:'home'},'')}catch(e){}};
-const prep=f=>f.b.forEach(b=>b.x=norm(b.t));
+const prep=f=>f.b.forEach(b=>b.x=norm(b.t+(b.e?' '+b.e:'')));
 async function load(){try{db=await new Promise((ok,ko)=>{const r=indexedDB.open('fouille2',1);r.onupgradeneeded=()=>{r.result.createObjectStore('f',{keyPath:'id'});r.result.createObjectStore('b')};r.onsuccess=()=>ok(r.result);r.onerror=()=>ko()});files=await rq(st('readonly').getAll())}catch(e){db=null;toast("Stockage indisponible : fichiers gardés jusqu'à la fermeture")}
 files.sort((a,b)=>b.d-a.d);try{navigator.storage.persist()}catch(e){}renderHome()}
 const dec=s=>s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
-const paras=(xml,p,t)=>(xml.match(new RegExp('<'+p+'[ >][\\s\\S]*?</'+p+'>','g'))||[]).map(x=>dec([...x.matchAll(new RegExp('<'+t+'[^>]*>([^<]*)</'+t+'>','g'))].map(m=>m[1]).join('')).trim());
+const px=(x,p)=>x.match(new RegExp('<'+p+'[ >][\\s\\S]*?</'+p+'>','g'))||[];
+const tx=(x,t,br)=>{let o='';for(const m of x.matchAll(new RegExp('<'+t+'(?: [^>]*)?>([^<]*)</'+t+'>|'+br,'g')))o+=m[1]!==undefined?m[1]:' ';return dec(o).replace(/\s+/g,' ').trim()};
+const paras=(x,P,T,TR,TC,BR)=>{x=x.replace(new RegExp('<'+TR+'[ >][\\s\\S]*?</'+TR+'>','g'),tr=>{const c=px(tr,TC).map(k=>px(k,P).map(q=>tx(q,T,BR)).filter(Boolean).join(' ')).filter(Boolean);return c.length?'<'+P+'><'+T+'>'+c.join(' | ').replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</'+T+'></'+P+'>':''});return px(x,P).map(q=>tx(q,T,BR))};
+const WB='<w:tab/>|<w:br(?: [^>]*)?/>|<w:cr/>',AB='<a:br(?: [^>]*)?/>',tick=()=>new Promise(r=>setTimeout(r));
 async function parse(f){const e=ext(f.name),out=[];
- if(['xlsx','xls','xlsm','ods','csv'].includes(e)){if(typeof XLSX=='undefined')throw Error('bibliothèque Excel non chargée');const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellNF:true,dense:true});const cell=c=>{if(!c)return'';if(c.t=='n'&&Number.isInteger(c.v)&&(!c.z||c.z=='General'))return String(c.v);return String(c.w!=null?c.w:(c.v!=null?c.v:'')).trim()};for(const sn of wb.SheetNames){const ws=wb.Sheets[sn],D=Array.isArray(ws)?ws:ws['!data'];if(D){D.forEach((row,r)=>{if(!row)return;const a=[];row.forEach(c=>{const x=cell(c);if(x)a.push(x)});if(a.length)out.push({s:sn,r:r+1,t:a.join(' | ')})})}else{let r0=1e9,r1=-1,c1=0;for(const k in ws){if(k[0]=='!')continue;const c=XLSX.utils.decode_cell(k);if(c.r<r0)r0=c.r;if(c.r>r1)r1=c.r;if(c.c>c1)c1=c.c}for(let r=r0;r<=r1;r++){const a=[];for(let c=0;c<=c1;c++){const x=cell(ws[XLSX.utils.encode_cell({r,c})]);if(x)a.push(x)}if(a.length)out.push({s:sn,r:r+1,t:a.join(' | ')})}}await new Promise(r=>setTimeout(r))}}
- else if(e=='docx'){const z=await JSZip.loadAsync(await f.arrayBuffer());let k=0;paras(await z.file('word/document.xml').async('string'),'w:p','w:t').forEach(t=>{k++;if(t)out.push({s:'Document',r:k,t})})}
- else if(e=='pptx'){const z=await JSZip.loadAsync(await f.arrayBuffer());const ns=Object.keys(z.files).filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a,b)=>parseInt(a.match(/\d+/g)[1])-parseInt(b.match(/\d+/g)[1]));for(let i=0;i<ns.length;i++){let k=0;paras(await z.file(ns[i]).async('string'),'a:p','a:t').forEach(t=>{k++;if(t)out.push({s:'Diapo '+(i+1),r:k,t})})}}
+ if(['xlsx','xls','xlsm','ods','csv'].includes(e)){if(typeof XLSX=='undefined')throw Error('bibliothèque Excel non chargée');const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellNF:true,dense:true});
+  const cell=c=>{if(!c)return'';if(c.t=='n'&&Number.isInteger(c.v)&&(!c.z||c.z=='General'))return String(c.v);return String(c.w!=null?c.w:(c.v!=null?c.v:'')).trim()};
+  const addRow=(sn,r,cs)=>{const a=[],ex=[],cm=[];cs.forEach((c,ci)=>{if(!c)return;const x=cell(c);if(x)a.push(x);if(c.t=='n'&&c.v!=null&&String(c.v)!==x)ex.push(String(c.v));if(c.l&&c.l.Target)ex.push(c.l.Target);if(c.c)c.c.forEach(m=>{if(m.t)cm.push({s:sn,r:r+1,t:'Commentaire '+XLSX.utils.encode_cell({r,c:ci})+' : '+m.t.trim()})})});if(a.length)out.push(ex.length?{s:sn,r:r+1,t:a.join(' | '),e:ex.join(' ')}:{s:sn,r:r+1,t:a.join(' | ')});cm.forEach(m=>out.push(m))};
+  for(const sn of wb.SheetNames){const ws=wb.Sheets[sn],D=Array.isArray(ws)?ws:ws['!data'];
+   if(D){D.forEach((row,r)=>{if(row)addRow(sn,r,row)})}
+   else{let r0=1e9,r1=-1,c1=0;for(const k in ws){if(k[0]=='!')continue;const c=XLSX.utils.decode_cell(k);if(c.r<r0)r0=c.r;if(c.r>r1)r1=c.r;if(c.c>c1)c1=c.c}for(let r=r0;r<=r1;r++){const cs=[];for(let c=0;c<=c1;c++)cs[c]=ws[XLSX.utils.encode_cell({r,c})];addRow(sn,r,cs)}}
+   await tick()}}
+ else if(e=='docx'){const z=await JSZip.loadAsync(await f.arrayBuffer());const parts=[['word/document.xml','Document']];
+  Object.keys(z.files).sort().forEach(n=>{const m=n.match(/^word\/(header|footer)(\d*)\.xml$/);if(m)parts.push([n,(m[1]=='header'?'En-tête':'Pied de page')+(m[2]?' '+m[2]:'')]);else if(n=='word/footnotes.xml')parts.push([n,'Notes de bas de page']);else if(n=='word/endnotes.xml')parts.push([n,'Notes de fin']);else if(n=='word/comments.xml')parts.push([n,'Commentaires'])});
+  for(const [n,s] of parts){const fl=z.file(n);if(!fl)continue;let k=0;paras(await fl.async('string'),'w:p','w:t','w:tr','w:tc',WB).forEach(t=>{k++;if(t)out.push({s,r:k,t})});await tick()}}
+ else if(e=='pptx'){const z=await JSZip.loadAsync(await f.arrayBuffer());const rd=n=>z.file(n)?z.file(n).async('string'):Promise.resolve('');let ns=[];
+  try{const pr=await rd('ppt/presentation.xml'),rl=await rd('ppt/_rels/presentation.xml.rels'),mp={};[...rl.matchAll(/<Relationship\b[^>]*>/g)].forEach(m=>{const i=m[0].match(/\bId="([^"]+)"/),t=m[0].match(/\bTarget="([^"]+)"/);if(i&&t)mp[i[1]]=t[1]});ns=[...pr.matchAll(/<p:sldId\b[^>]*\br:id="([^"]+)"/g)].map(m=>'ppt/'+(mp[m[1]]||'').replace(/^\/?(ppt\/)?/,'')).filter(n=>z.file(n))}catch(x){}
+  if(!ns.length)ns=Object.keys(z.files).filter(n=>/^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a,b)=>parseInt(a.match(/\d+/)[0])-parseInt(b.match(/\d+/)[0]));
+  for(let i=0;i<ns.length;i++){let k=0;paras(await rd(ns[i]),'a:p','a:t','a:tr','a:tc',AB).forEach(t=>{k++;if(t)out.push({s:'Diapo '+(i+1),r:k,t})});
+   const rel=await rd(ns[i].replace('slides/','slides/_rels/')+'.rels'),nm=rel.match(/Target="[^"]*notesSlides\/([^"]+)"/);
+   if(nm){let k2=0;paras((await rd('ppt/notesSlides/'+nm[1])).replace(/<a:fld[\s\S]*?<\/a:fld>/g,''),'a:p','a:t','a:tr','a:tc',AB).forEach(t=>{k2++;if(t)out.push({s:'Notes diapo '+(i+1),r:k2,t})})}
+   if(i%10==9)await tick()}}
  else if(['txt','md'].includes(e)){(await f.text()).split(/\r?\n/).forEach((t,i)=>{if(t.trim())out.push({s:'Texte',r:i+1,t:t.trim()})})}
  else throw 0;return out}
 $('#add').onclick=()=>$('#inp').click();
-$('#inp').onchange=async ev=>{for(const f of ev.target.files){toast('Lecture de '+f.name+'…');try{const b=await parse(f);if(!b.length)throw Error('aucun texte trouvé dans le fichier');const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2),name:f.name,ext:ext(f.name),size:f.size,d:Date.now(),n:b.length,b};if(db){toast('Enregistrement…');const t=db.transaction(['f','b'],'readwrite');const {b:_x,...meta}=rec;t.objectStore('f').put(meta);t.objectStore('b').put(b,rec.id);await done(t)}prep(rec);files.unshift(rec);renderHome();toast('✓ '+f.name+' ajouté')}catch(e){toast('Lecture impossible : '+f.name+' — '+((e&&e.message)||'format non pris en charge (xlsx, docx, pptx, csv, txt)'))}}ev.target.value=''};
+$('#inp').onchange=async ev=>{for(const f of ev.target.files){toast('Lecture de '+f.name+'…');try{const b=await parse(f);if(!b.length)throw Error('aucun texte trouvé dans le fichier');const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2),name:f.name,ext:ext(f.name),size:f.size,d:Date.now(),n:b.length,k:new Set(b.map(x=>x.s)).size,b};if(db){toast('Enregistrement…');const t=db.transaction(['f','b'],'readwrite');const {b:_x,...meta}=rec;t.objectStore('f').put(meta);t.objectStore('b').put(b,rec.id);await done(t)}prep(rec);files.unshift(rec);renderHome();toast('✓ '+f.name+' : '+b.length+' lignes, '+rec.k+' '+tabw(rec.ext)+(rec.k>1?'s':''))}catch(e){toast('Lecture impossible : '+f.name+' — '+((e&&e.message)||'format non pris en charge (xlsx, docx, pptx, csv, txt)'))}}ev.target.value=''};
 function renderHome(){const L=$('#files');if(!files.length){L.innerHTML='<div class="empty"><div class="big">🔎</div><h3>Aucun fichier</h3>Ajoutez un Excel, Word ou PowerPoint pour commencer.</div>';return}
- L.innerHTML=files.map((f,i)=>`<div class="card" data-i="${i}" style="animation-delay:${Math.min(i,8)*60}ms"><div class="ico x-${f.ext}">${f.ext.toUpperCase().slice(0,4)}</div><div class="meta"><b>${esc(f.name)}</b><span>${f.n} lignes · ${(f.size/1024).toFixed(0)} Ko · ${new Date(f.d).toLocaleDateString('fr-FR')}</span></div><button class="ib del" data-i="${i}" aria-label="Supprimer"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div>`).join('')}
-$('#files').onclick=async e=>{const d=e.target.closest('.del'),c=e.target.closest('.card');if(d){e.stopPropagation();const f=files[d.dataset.i];ask('Supprimer ce fichier ?',f.name+' sera retiré de la mémoire de l\'application.',async()=>{if(db){const t=db.transaction(['f','b'],'readwrite');t.objectStore('f').delete(f.id);t.objectStore('b').delete(f.id);await done(t)}files=files.filter(x=>x!==f);renderHome();toast('Fichier supprimé')})}else if(c){cur=files[c.dataset.i];if(!cur.b){toast('Ouverture…');try{cur.b=(await rq(st('readonly','b').get(cur.id)))||[];prep(cur)}catch(x){toast('Lecture du fichier impossible');return}}$('#ft').textContent=cur.name;$('#q').value='';search();go('file');setTimeout(()=>$('#q').focus(),450)}};
+ L.innerHTML=files.map((f,i)=>`<div class="card" data-i="${i}" style="animation-delay:${Math.min(i,8)*60}ms"><div class="ico x-${f.ext}">${f.ext.toUpperCase().slice(0,4)}</div><div class="meta"><b>${esc(f.name)}</b><span>${f.n} lignes${f.k>1?' · '+f.k+' '+tabw(f.ext)+'s':''} · ${(f.size/1024).toFixed(0)} Ko · ${new Date(f.d).toLocaleDateString('fr-FR')}</span></div><button class="ib del" data-i="${i}" aria-label="Supprimer"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div>`).join('')}
+$('#files').onclick=async e=>{const d=e.target.closest('.del'),c=e.target.closest('.card');if(d){e.stopPropagation();const f=files[d.dataset.i];ask('Supprimer ce fichier ?',f.name+' sera retiré de la mémoire de l\'application.',async()=>{if(db){const t=db.transaction(['f','b'],'readwrite');t.objectStore('f').delete(f.id);t.objectStore('b').delete(f.id);await done(t)}files=files.filter(x=>x!==f);renderHome();toast('Fichier supprimé')})}else if(c){cur=files[c.dataset.i];if(!cur.b){toast('Ouverture…');try{cur.b=(await rq(st('readonly','b').get(cur.id)))||[];prep(cur)}catch(x){toast('Lecture du fichier impossible');return}}$('#ft').textContent=cur.name;$('#q').value='';sf=null;chips();search();go('file');setTimeout(()=>$('#q').focus(),450)}};
 function hl(t,clip){const [n,m]=nm(t);let r=[];terms.forEach(w=>{for(let i=n.indexOf(w);i>=0;i=n.indexOf(w,i+w.length))r.push([m[i],m[i+w.length-1]+1])});r.sort((a,b)=>a[0]-b[0]);const g=[];r.forEach(x=>{const l=g[g.length-1];if(l&&x[0]<=l[1])l[1]=Math.max(l[1],x[1]);else g.push(x)});
  let s=0,pre='';if(clip&&t.length>170&&g.length){s=Math.max(0,g[0][0]-50);if(s)pre='…'}let o=pre,p=s;g.forEach(([a,b])=>{if(b<=s)return;a=Math.max(a,s);o+=esc(t.slice(p,a))+'<mark>'+esc(t.slice(a,b))+'</mark>';p=b});o+=esc(t.slice(p,clip?s+170:undefined));return o+(clip&&t.length>s+170?'…':'')}
 function nm(s){let n='',m=[];for(let i=0;i<s.length;i++)for(const ch of norm(s[i])){n+=ch;m.push(i)}return[n,m]}
 const rit=(i,k)=>{const b=cur.b[i];return`<div class="res" data-i="${i}" style="animation-delay:${Math.min(k,12)*35}ms"><small>${esc(b.s)} · ${unit(cur.ext)} ${b.r}</small><p>${hl(b.t,true)}</p></div>`};
-function search(){const q=$('#q').value.trim();$('#cl').hidden=!q;terms=norm(q).split(/\s+/).filter(Boolean);const L=$('#res');L.scrollTop=0;
- if(!terms.length){$('#cnt').textContent=cur.b.length+' lignes lues · aperçu des premières :';L.innerHTML=cur.b.slice(0,25).map((b,k)=>rit(k,k)).join('');return}
- const h=[];for(let i=0;i<cur.b.length&&h.length<150;i++)if(terms.every(w=>cur.b[i].x.includes(w)))h.push(i);
+const tabw=e=>/^(xlsx|xls|xlsm|ods|csv)$/.test(e)?'onglet':'section';
+function chips(){const m=new Map();cur.b.forEach(b=>m.set(b.s,(m.get(b.s)||0)+1));cur.sec=[...m.keys()];const C=$('#chips'),many=cur.sec.length>1;C.style.display=many?'flex':'none';C.innerHTML=many?`<button class="chip${sf?'':' on'}" data-s="">Tous (${cur.b.length})</button>`+cur.sec.map(s=>`<button class="chip${sf===s?' on':''}" data-s="${esc(s)}">${esc(s)} (${m.get(s)})</button>`).join(''):''}
+$('#chips').onclick=e=>{const c=e.target.closest('.chip');if(!c)return;sf=c.dataset.s||null;chips();search()};
+function search(){const q=$('#q').value.trim();$('#cl').hidden=!q;const mq=q.match(/^["“](.+)["”]$/);terms=mq?[norm(mq[1].trim())]:norm(q).split(/\s+/).filter(Boolean);const L=$('#res');L.scrollTop=0;
+ if(!terms.length){const pv=[];for(let i=0;i<cur.b.length&&pv.length<25;i++)if(!sf||cur.b[i].s==sf)pv.push(i);$('#cnt').textContent=cur.b.length+' lignes lues ('+cur.sec.length+' '+tabw(cur.ext)+(cur.sec.length>1?'s':'')+') · aperçu :';L.innerHTML=pv.map((i,k)=>rit(i,k)).join('');return}
+ const h=[];for(let i=0;i<cur.b.length&&h.length<150;i++)if((!sf||cur.b[i].s==sf)&&terms.every(w=>cur.b[i].x.includes(w)))h.push(i);
  $('#cnt').textContent=h.length?(h.length>=150?'150+ résultats (affinez votre recherche)':h.length+' résultat'+(h.length>1?'s':'')):'';
  L.innerHTML=h.length?h.map((i,k)=>rit(i,k)).join(''):'<div class="empty"><div class="big">🫥</div><h3>Rien trouvé</h3>Essayez un autre mot ou moins de mots.</div>'}
 $('#q').oninput=()=>{clearTimeout(search.t);search.t=setTimeout(search,180)};$('#cl').onclick=()=>{$('#q').value='';search();$('#q').focus()};
