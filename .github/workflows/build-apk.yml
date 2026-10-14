@@ -43,16 +43,16 @@ jobs:
           cd android && ./gradlew assembleDebug
 
       - name: Renommer l'APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Fouille.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk TIA-QUICK-FIND.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Fouille-apk
-          path: Fouille.apk
+          name: TIA-QUICK-FIND-apk
+          path: TIA-QUICK-FIND.apk
 
       - name: Publier dans les Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
-          name: Fouille v${{ github.run_number }}
-          files: Fouille.apk
+          name: TIA QUICK FIND v${{ github.run_number }}
+          files: TIA-QUICK-FIND.apk
