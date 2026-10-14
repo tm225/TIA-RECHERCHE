@@ -1,0 +1,58 @@
+name: Construire l'APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Télécharger les bibliothèques (Excel, Word, PowerPoint)
+        run: |
+          mkdir -p www/lib
+          curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js -o www/lib/xlsx.full.min.js
+          curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js -o www/lib/jszip.min.js
+
+      - name: Créer le projet Android
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Compiler l'APK
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleDebug
+
+      - name: Renommer l'APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Fouille.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Fouille-apk
+          path: Fouille.apk
+
+      - name: Publier dans les Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Fouille v${{ github.run_number }}
+          files: Fouille.apk
