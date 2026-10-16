@@ -61,7 +61,7 @@ mark{background:var(--hl);color:var(--hlt);border-radius:4px;padding:0 2px}
 <div id="app">
  <section class="scr" id="home">
   <header><h1>TIA QUICK FIND</h1><button class="ib q" id="quit" aria-label="Quitter"><svg viewBox="0 0 24 24"><path d="M12 3v9M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></header>
-  <div class="sub">Vos fichiers restent ici jusqu'à leur suppression. · v5</div>
+  <div class="sub">Vos fichiers restent ici jusqu'à leur suppression. · v6</div>
   <div class="list" id="files"></div>
   <button class="fab" id="add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Ajouter un fichier</button>
   <input type="file" id="inp" hidden multiple accept=".xlsx,.xls,.xlsm,.ods,.csv,.docx,.pptx,.txt,.md">
@@ -156,5 +156,6 @@ $('#hb').onclick=async()=>{const b=cur.b[cur.vi];if(!b||!b.v){toast("Cette ligne
 const home=()=>go('home');$('#b1').onclick=home;$('#hm').onclick=home;$('#b2').onclick=()=>go('file');
 function quit(){const A=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;if(A&&A.exitApp){A.exitApp();return}window.close();setTimeout(()=>$('#bye').classList.add('on'),300)}
 $('#quit').onclick=()=>ask("Quitter l'application ?",'Vos fichiers resteront enregistrés.',quit);
+try{const m=navigator.userAgent.match(/Chrome\/(\d+)/);if(m)$('#home .sub').textContent+=' · WebView '+m[1]}catch(e){}
 load();
 </script></body></html>
